@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "openapi-check": {
+      "commandName": "Project",
+      "commandLineArgs": "https://api.dev.iwnonprod.com/swagger/v0.9/swagger.json https://api.uat.iwnonprod.com/swagger/v0.9/swagger.json"
+    }
+  }
+}
