@@ -82,10 +82,10 @@ namespace OpenApi.Check.Tests
             OpenApiComparer.Compare(_doc1, _doc2)
                 .FindOperations("/api/ResponseBreakingModel")
                 .ShouldHaveErrors(
-                    "Get /api/ResponseBreakingModel: [Error] (HTTP 200|application/json).body type does not match (before: string, after: array)",
-                    "Get /api/ResponseBreakingModel/number: [Error] (HTTP 200|application/json).body type does not match (before: integer, after: number)",
-                    "Get /api/ResponseBreakingModel/details: [Error] (HTTP 200|application/json).body type does not match (before: object, after: array)",
-                    "Get /api/ResponseBreakingModel/array: [Error] (HTTP 200|application/json).body[] type does not match (before: integer, after: string)");
+                    "Get /api/ResponseBreakingModel: [Error] response(HTTP 200|application/json).body type does not match (before: string, after: array)",
+                    "Get /api/ResponseBreakingModel/number: [Error] response(HTTP 200|application/json).body type does not match (before: integer, after: number)",
+                    "Get /api/ResponseBreakingModel/details: [Error] response(HTTP 200|application/json).body type does not match (before: object, after: array)",
+                    "Get /api/ResponseBreakingModel/array: [Error] response(HTTP 200|application/json).body[] type does not match (before: integer, after: string)");
         }
 
         [Test]
@@ -98,9 +98,27 @@ namespace OpenApi.Check.Tests
             OpenApiComparer.Compare(_doc2, _doc1)
                 .FindOperations("/api/ResponseModel")
                 .ShouldHaveErrors(
-                    "Get /api/ResponseModel: [Error] (HTTP 200|application/json).body[].id no longer nullable",
-                    "Get /api/ResponseModel: [Error] (HTTP 200|application/json).body[].text no longer nullable",
-                    "Get /api/ResponseModel: [Error] (HTTP 200|application/json).body[].newField no longer exists"
+                    "Get /api/ResponseModel: [Error] response(HTTP 200|application/json).body[].id no longer nullable",
+                    "Get /api/ResponseModel: [Error] response(HTTP 200|application/json).body[].text no longer nullable",
+                    "Get /api/ResponseModel: [Error] response(HTTP 200|application/json).body[].newField no longer exists"
+                );
+        }
+
+        [Test]
+        public void RequestModel_compatibility_tests()
+        {
+            OpenApiComparer.Compare(_doc1, _doc2)
+                .FindOperations("/api/RequestModel")
+                .ShouldAllBeOk();
+
+            OpenApiComparer.Compare(_doc2, _doc1)
+                .FindOperations("/api/RequestModel")
+                .ShouldHaveErrors(
+                    "Post /api/RequestModel: [Error] Operation request body is now required, while it was not before",
+                    "Post /api/RequestModel: [Error] request(application/json).body.requestId is now not-nullable",
+                    "Post /api/RequestModel: [Error] request(application/json).body.text is now not-nullable",
+                    "Post /api/RequestModel: [Error] request(application/json).body.number is now not-nullable",
+                    "Post /api/RequestModel: [Error] request(application/json).body.additionalParameter no longer exists"
                 );
         }
     }

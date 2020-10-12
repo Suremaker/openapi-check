@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Microsoft.OpenApi.Models;
 using OpenApiCheck.Model;
 
@@ -54,27 +55,103 @@ namespace OpenApiCheck
                 if (!nextOp.Responses.TryGetValue(statusCode, out var nextResponse))
                     operation.ReportIssue($"Operation no longer returns HTTP {statusCode} code");
                 else
-                    CompareContents(statusCode, currentResponse, nextResponse, operation);
+                    CompareResponse(statusCode, currentResponse, nextResponse, operation);
+            }
+
+            CompareRequest(currentOp.RequestBody, nextOp.RequestBody, operation);
+        }
+
+        private void CompareRequest(OpenApiRequestBody currentRequest, OpenApiRequestBody nextRequest, OperationComparison operation)
+        {
+            if (nextRequest == null)
+                return;
+
+            if (nextRequest.Required && (currentRequest == null || !currentRequest.Required))
+                operation.ReportIssue("Operation request body is now required, while it was not before");
+
+            if (currentRequest == null)
+                return;
+
+            foreach (var (contentType, currentModel) in currentRequest.Content)
+            {
+                if (!nextRequest.Content.TryGetValue(contentType, out var nextModel))
+                    operation.ReportIssue($"Operation no longer accepts request for {contentType}");
+                else
+                    CompareRequestModels(contentType, currentModel, nextModel, operation);
             }
         }
 
-        private void CompareContents(string statusCode, OpenApiResponse currentResponse, OpenApiResponse nextResponse, OperationComparison operation)
+        private void CompareResponse(string statusCode, OpenApiResponse currentResponse, OpenApiResponse nextResponse, OperationComparison operation)
         {
             foreach (var (contentType, currentModel) in currentResponse.Content)
             {
                 if (!nextResponse.Content.TryGetValue(contentType, out var nextModel))
                     operation.ReportIssue($"Operation no longer returns {contentType} for {statusCode} code");
                 else
-                    CompareModels(statusCode, contentType, currentModel, nextModel, operation);
+                    CompareResponseModels(statusCode, contentType, currentModel, nextModel, operation);
             }
         }
 
-        private void CompareModels(string statusCode, string contentType, OpenApiMediaType currentModel, OpenApiMediaType nextModel, OperationComparison operation)
+        private void CompareResponseModels(string statusCode, string contentType, OpenApiMediaType currentModel, OpenApiMediaType nextModel, OperationComparison operation)
         {
-            CompareSchema($"(HTTP {statusCode}|{contentType}).body", currentModel.Schema, nextModel.Schema, operation, operation.IsDeprecated);
+            CompareResponseSchema($"response(HTTP {statusCode}|{contentType}).body", currentModel.Schema, nextModel.Schema, operation, operation.IsDeprecated);
         }
 
-        private void CompareSchema(string path, OpenApiSchema current, OpenApiSchema next, OperationComparison operation, bool isDeprecated)
+        private void CompareRequestModels(string contentType, OpenApiMediaType currentModel, OpenApiMediaType nextModel, OperationComparison operation)
+        {
+            CompareRequestSchema($"request({contentType}).body", nextModel.Schema, currentModel.Schema, operation, operation.IsDeprecated);
+        }
+
+        private void CompareRequestSchema(string path, OpenApiSchema next, OpenApiSchema current, OperationComparison operation, bool isDeprecated)
+        {
+            if ((current?.Deprecated ?? true) && next == null) return;
+            isDeprecated |= current?.Deprecated ?? false;
+
+            if (current == null)
+            {
+                if (!next.Nullable)
+                    ReportPathIssue(operation, path, isDeprecated, "was introduced not-nullable, while it was not present before");
+                return;
+            }
+
+            if (next == null)
+            {
+                ReportPathIssue(operation, path, isDeprecated, "no longer exists");
+                return;
+            }
+
+            if (current.Nullable && !next.Nullable)
+            {
+                ReportPathIssue(operation, path, isDeprecated, "is now not-nullable");
+                return;
+            }
+
+            if (current.Type != next.Type)
+            {
+                ReportPathIssue(operation, path, isDeprecated, $"type does not match (before: {current.Type}, after: {next.Type})");
+                return;
+            }
+
+            if (current.Type == "array")
+            {
+                CompareRequestSchema($"{path}[]", next.Items, current.Items, operation, isDeprecated);
+                return;
+            }
+
+            foreach (var (name, currentProp) in current.Properties)
+            {
+                var nextProp = next.Properties.TryGetValue(name, out var n) ? n : null;
+
+                CompareRequestSchema($"{path}.{name}", nextProp, currentProp, operation, isDeprecated);
+            }
+            foreach (var (name, nextProp) in next.Properties)
+            {
+                if (!current.Properties.TryGetValue(name, out _))
+                    CompareRequestSchema($"{path}.{name}", nextProp, null, operation, isDeprecated);
+            }
+        }
+
+        private void CompareResponseSchema(string path, OpenApiSchema current, OpenApiSchema next, OperationComparison operation, bool isDeprecated)
         {
             isDeprecated |= current.Deprecated;
             if (next == null)
@@ -82,6 +159,7 @@ namespace OpenApiCheck
                 ReportPathIssue(operation, path, isDeprecated, "no longer exists");
                 return;
             }
+
             if (current.Type != next.Type)
             {
                 ReportPathIssue(operation, path, isDeprecated, $"type does not match (before: {current.Type}, after: {next.Type})");
@@ -96,14 +174,14 @@ namespace OpenApiCheck
 
             if (current.Type == "array")
             {
-                CompareSchema($"{path}[]", current.Items, next.Items, operation, isDeprecated);
+                CompareResponseSchema($"{path}[]", current.Items, next.Items, operation, isDeprecated);
                 return;
             }
             foreach (var (name, currentProp) in current.Properties)
             {
                 var nextProp = next.Properties.TryGetValue(name, out var n) ? n : null;
 
-                CompareSchema($"{path}.{name}", currentProp, nextProp, operation, isDeprecated);
+                CompareResponseSchema($"{path}.{name}", currentProp, nextProp, operation, isDeprecated);
             }
         }
 
