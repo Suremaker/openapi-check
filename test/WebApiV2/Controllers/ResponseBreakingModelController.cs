@@ -13,7 +13,7 @@ namespace WebApiV2.Controllers
         public double GetNumber() => 5.5;
 
         [HttpGet("details")]
-        public MyModel[] GetDetails() => new MyModel[0];
+        public MyModel GetDetails() => new MyModel();
 
         [HttpGet("array")]
         public string[] GetArray() => new string[0];

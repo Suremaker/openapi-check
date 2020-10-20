@@ -57,7 +57,7 @@ namespace OpenApi.Check.Tests
             OpenApiComparer.Compare(_doc2, _doc1)
                 .FindOperations("/api/Responses")
                 .ShouldHaveErrors(
-                    "Get /api/Responses: [Error] Operation no longer returns HTTP 400 code"
+                    "Get /api/Responses: [Warning] Operation no longer returns HTTP 400 code"
                 );
         }
 
@@ -83,7 +83,7 @@ namespace OpenApi.Check.Tests
                 .ShouldHaveErrors(
                     "Get /api/ResponseBreakingModel: [Error] response(HTTP 200|application/json).body type does not match (before: string, after: array)",
                     "Get /api/ResponseBreakingModel/number: [Error] response(HTTP 200|application/json).body type does not match (before: integer, after: number)",
-                    "Get /api/ResponseBreakingModel/details: [Error] response(HTTP 200|application/json).body type does not match (before: object, after: array)",
+                    "Get /api/ResponseBreakingModel/details: [Warning] response(HTTP 200|application/json).body.obsolete no longer exists (deprecated)",
                     "Get /api/ResponseBreakingModel/array: [Error] response(HTTP 200|application/json).body[] type does not match (before: integer, after: string)");
         }
 
@@ -113,7 +113,7 @@ namespace OpenApi.Check.Tests
             OpenApiComparer.Compare(_doc2, _doc1)
                 .FindOperations("/api/RequestModel")
                 .ShouldHaveErrors(
-                    "Post /api/RequestModel: [Error] Operation request body is now required, while it was not before",
+                    "Post /api/RequestModel: [Error] Operation request body is now required",
                     "Post /api/RequestModel: [Error] request(application/json).body.requestId is no longer nullable",
                     "Post /api/RequestModel: [Error] request(application/json).body.text is now required",
                     "Post /api/RequestModel: [Error] request(application/json).body.number is no longer nullable",
@@ -129,7 +129,8 @@ namespace OpenApi.Check.Tests
                 .FindOperations("/api/RequestBreakingModel")
                 .ShouldHaveErrors(
                     "Post /api/RequestBreakingModel: [Error] request(application/json).body.someField type does not match (before: string, after: integer)",
-                    "Post /api/RequestBreakingModel: [Error] request(application/json).body.someArray[] type does not match (before: , after: integer)"
+                    "Post /api/RequestBreakingModel: [Error] request(application/json).body.someArray[] type does not match (before: , after: integer)",
+                    "Post /api/RequestBreakingModel: [Warning] request(application/json).body.obsoleteField no longer exists (deprecated)"
                 );
         }
 

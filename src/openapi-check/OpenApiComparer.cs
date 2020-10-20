@@ -52,7 +52,7 @@ namespace OpenApiCheck
             foreach (var (statusCode, currentResponse) in currentOp.Responses)
             {
                 if (!nextOp.Responses.TryGetValue(statusCode, out var nextResponse))
-                    operation.ReportIssue($"Operation no longer returns HTTP {statusCode} code");
+                    operation.ReportIssue($"Operation no longer returns HTTP {statusCode} code", CompareStatus.Warning);
                 else
                     CompareResponse(statusCode, currentResponse, nextResponse, operation);
             }
@@ -66,7 +66,7 @@ namespace OpenApiCheck
                 return;
 
             if (nextRequest.Required && (currentRequest == null || !currentRequest.Required))
-                operation.ReportIssue("Operation request body is now required, while it was not before");
+                operation.ReportIssue("Operation request body is now required");
 
             if (currentRequest == null)
                 return;
@@ -104,8 +104,6 @@ namespace OpenApiCheck
         private void CompareRequestSchema(string path, OpenApiSchema next, OpenApiSchema current, OperationComparison operation, bool isDeprecated, bool isNextRequired, bool isCurrentRequired, ImmutableHashSet<(string left, string right)> comparisonCache)
         {
             if (current == null)
-                return;
-            if (current.Deprecated && next == null)
                 return;
             isDeprecated |= current.Deprecated;
 
@@ -204,7 +202,7 @@ namespace OpenApiCheck
 
         private static void ReportPathIssue(OperationComparison operation, string path, bool isDeprecated, string message)
         {
-            operation.ReportIssue($"{path} {message}", isDeprecated ? CompareStatus.Warning : CompareStatus.Error);
+            operation.ReportIssue($"{path} {message}{(isDeprecated ? " (deprecated)" : "")}", isDeprecated ? CompareStatus.Warning : CompareStatus.Error);
         }
     }
 }

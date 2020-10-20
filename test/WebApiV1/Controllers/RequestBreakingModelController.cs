@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebApiV1.Controllers
@@ -18,6 +19,8 @@ namespace WebApiV1.Controllers
         {
             public string SomeField { get; set; }
             public object[] SomeArray { get; set; }
+            [Obsolete]
+            public int ObsoleteField { get; set; }
         }
     }
 }

@@ -21,8 +21,6 @@ namespace WebApiV1.Controllers
             [Required]
             public string Text { get; set; }
             public int Number { get; set; }
-            [Obsolete]
-            public int ObsoleteField { get; set; }
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System;
+using Microsoft.AspNetCore.Mvc;
 
 namespace WebApiV1.Controllers
 {
@@ -22,6 +23,8 @@ namespace WebApiV1.Controllers
         public class MyModel
         {
             public string Text { get; set; }
+            [Obsolete]
+            public int Obsolete { get; set; }
         }
     }
 }
