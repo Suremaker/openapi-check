@@ -1,6 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using Microsoft.OpenApi.Models;
 using OpenApiCheck.Model;
 
@@ -99,30 +97,22 @@ namespace OpenApiCheck
 
         private void CompareRequestModels(string contentType, OpenApiMediaType currentModel, OpenApiMediaType nextModel, OperationComparison operation)
         {
-            CompareRequestSchema($"request({contentType}).body", nextModel.Schema, currentModel.Schema, operation, operation.IsDeprecated);
+            CompareRequestSchema($"request({contentType}).body", nextModel.Schema, currentModel.Schema, operation, operation.IsDeprecated, false, false);
         }
 
-        private void CompareRequestSchema(string path, OpenApiSchema next, OpenApiSchema current, OperationComparison operation, bool isDeprecated)
+        private void CompareRequestSchema(string path, OpenApiSchema next, OpenApiSchema current,
+            OperationComparison operation, bool isDeprecated, bool isNextRequired, bool isCurrentRequired)
         {
-            if ((current?.Deprecated ?? true) && next == null) return;
-            isDeprecated |= current?.Deprecated ?? false;
-
             if (current == null)
-            {
-                if (!next.Nullable)
-                    ReportPathIssue(operation, path, isDeprecated, "was introduced not-nullable, while it was not present before");
                 return;
-            }
+            if (current.Deprecated && next == null)
+                return;
+
+            isDeprecated |= current.Deprecated;
 
             if (next == null)
             {
                 ReportPathIssue(operation, path, isDeprecated, "no longer exists");
-                return;
-            }
-
-            if (current.Nullable && !next.Nullable)
-            {
-                ReportPathIssue(operation, path, isDeprecated, "is now not-nullable");
                 return;
             }
 
@@ -132,9 +122,21 @@ namespace OpenApiCheck
                 return;
             }
 
+            if (!isCurrentRequired && isNextRequired)
+            {
+                ReportPathIssue(operation, path, isDeprecated, "is now required");
+                return;
+            }
+
+            if (current.Nullable && !next.Nullable)
+            {
+                ReportPathIssue(operation, path, isDeprecated, "is no longer nullable");
+                return;
+            }
+
             if (current.Type == "array")
             {
-                CompareRequestSchema($"{path}[]", next.Items, current.Items, operation, isDeprecated);
+                CompareRequestSchema($"{path}[]", next.Items, current.Items, operation, isDeprecated, false, false);
                 return;
             }
 
@@ -142,12 +144,12 @@ namespace OpenApiCheck
             {
                 var nextProp = next.Properties.TryGetValue(name, out var n) ? n : null;
 
-                CompareRequestSchema($"{path}.{name}", nextProp, currentProp, operation, isDeprecated);
+                CompareRequestSchema($"{path}.{name}", nextProp, currentProp, operation, isDeprecated, next.Required.Contains(name), current.Required.Contains(name));
             }
             foreach (var (name, nextProp) in next.Properties)
             {
                 if (!current.Properties.TryGetValue(name, out _))
-                    CompareRequestSchema($"{path}.{name}", nextProp, null, operation, isDeprecated);
+                    CompareRequestSchema($"{path}.{name}", nextProp, null, operation, isDeprecated, next.Required.Contains(name), current.Required.Contains(name));
             }
         }
 
@@ -168,7 +170,7 @@ namespace OpenApiCheck
 
             if (!current.Nullable && next.Nullable)
             {
-                ReportPathIssue(operation, path, isDeprecated, "no longer nullable");
+                ReportPathIssue(operation, path, isDeprecated, "is now nullable");
                 return;
             }
 

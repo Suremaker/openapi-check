@@ -1,5 +1,4 @@
 using System.Linq;
-using OpenApiCheck;
 using OpenApiCheck.Model;
 using Shouldly;
 

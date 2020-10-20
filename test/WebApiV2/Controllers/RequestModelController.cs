@@ -6,7 +6,7 @@ namespace WebApiV2.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Produces("application/json")]
-    [Consumes("application/json")]
+    [Consumes("application/json", "application/xml")]
     public class RequestModelController : ControllerBase
     {
         [HttpPost]

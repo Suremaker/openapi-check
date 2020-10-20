@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -98,8 +97,8 @@ namespace OpenApi.Check.Tests
             OpenApiComparer.Compare(_doc2, _doc1)
                 .FindOperations("/api/ResponseModel")
                 .ShouldHaveErrors(
-                    "Get /api/ResponseModel: [Error] response(HTTP 200|application/json).body[].id no longer nullable",
-                    "Get /api/ResponseModel: [Error] response(HTTP 200|application/json).body[].text no longer nullable",
+                    "Get /api/ResponseModel: [Error] response(HTTP 200|application/json).body[].id is now nullable",
+                    "Get /api/ResponseModel: [Error] response(HTTP 200|application/json).body[].text is now nullable",
                     "Get /api/ResponseModel: [Error] response(HTTP 200|application/json).body[].newField no longer exists"
                 );
         }
@@ -115,10 +114,22 @@ namespace OpenApi.Check.Tests
                 .FindOperations("/api/RequestModel")
                 .ShouldHaveErrors(
                     "Post /api/RequestModel: [Error] Operation request body is now required, while it was not before",
-                    "Post /api/RequestModel: [Error] request(application/json).body.requestId is now not-nullable",
-                    "Post /api/RequestModel: [Error] request(application/json).body.text is now not-nullable",
-                    "Post /api/RequestModel: [Error] request(application/json).body.number is now not-nullable",
-                    "Post /api/RequestModel: [Error] request(application/json).body.additionalParameter no longer exists"
+                    "Post /api/RequestModel: [Error] request(application/json).body.requestId is no longer nullable",
+                    "Post /api/RequestModel: [Error] request(application/json).body.text is now required",
+                    "Post /api/RequestModel: [Error] request(application/json).body.number is no longer nullable",
+                    "Post /api/RequestModel: [Error] request(application/json).body.additionalParameter no longer exists",
+                    "Post /api/RequestModel: [Error] Operation no longer accepts request for application/xml"
+                );
+        }
+
+        [Test]
+        public void RequestBreakingModel_compatibility_tests()
+        {
+            OpenApiComparer.Compare(_doc1, _doc2)
+                .FindOperations("/api/RequestBreakingModel")
+                .ShouldHaveErrors(
+                    "Post /api/RequestBreakingModel: [Error] request(application/json).body.someField type does not match (before: string, after: integer)",
+                    "Post /api/RequestBreakingModel: [Error] request(application/json).body.someArray[] type does not match (before: , after: integer)"
                 );
         }
     }
