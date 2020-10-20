@@ -132,5 +132,24 @@ namespace OpenApi.Check.Tests
                     "Post /api/RequestBreakingModel: [Error] request(application/json).body.someArray[] type does not match (before: , after: integer)"
                 );
         }
+
+        [Test]
+        public void RecursiveModels_compatibility_tests()
+        {
+            OpenApiComparer.Compare(_doc1, _doc2)
+                .FindOperations("/api/RecursiveModel")
+                .ShouldAllBeOk();
+
+            OpenApiComparer.Compare(_doc2, _doc1)
+                .FindOperations("/api/RecursiveModel")
+                .ShouldHaveErrors(
+                    "Post /api/RecursiveModel: [Error] response(HTTP 200|application/json).body.responseId no longer exists",
+                    "Post /api/RecursiveModel: [Error] response(HTTP 200|application/json).body.otherResponses{}.key no longer exists",
+                    "Post /api/RecursiveModel: [Error] response(HTTP 200|application/json).body.otherItems[].key no longer exists",
+                    "Post /api/RecursiveModel: [Error] request(application/json).body.requestId no longer exists",
+                    "Post /api/RecursiveModel: [Error] request(application/json).body.otherRequests{}.key no longer exists",
+                    "Post /api/RecursiveModel: [Error] request(application/json).body.otherItems[].key no longer exists"
+                );
+        }
     }
 }

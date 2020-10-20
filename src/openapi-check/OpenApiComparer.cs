@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 using Microsoft.OpenApi.Models;
 using OpenApiCheck.Model;
 
@@ -92,22 +93,20 @@ namespace OpenApiCheck
 
         private void CompareResponseModels(string statusCode, string contentType, OpenApiMediaType currentModel, OpenApiMediaType nextModel, OperationComparison operation)
         {
-            CompareResponseSchema($"response(HTTP {statusCode}|{contentType}).body", currentModel.Schema, nextModel.Schema, operation, operation.IsDeprecated);
+            CompareResponseSchema($"response(HTTP {statusCode}|{contentType}).body", currentModel.Schema, nextModel.Schema, operation, operation.IsDeprecated, ImmutableHashSet<(string left, string right)>.Empty);
         }
 
         private void CompareRequestModels(string contentType, OpenApiMediaType currentModel, OpenApiMediaType nextModel, OperationComparison operation)
         {
-            CompareRequestSchema($"request({contentType}).body", nextModel.Schema, currentModel.Schema, operation, operation.IsDeprecated, false, false);
+            CompareRequestSchema($"request({contentType}).body", nextModel.Schema, currentModel.Schema, operation, operation.IsDeprecated, false, false, ImmutableHashSet<(string left, string right)>.Empty);
         }
 
-        private void CompareRequestSchema(string path, OpenApiSchema next, OpenApiSchema current,
-            OperationComparison operation, bool isDeprecated, bool isNextRequired, bool isCurrentRequired)
+        private void CompareRequestSchema(string path, OpenApiSchema next, OpenApiSchema current, OperationComparison operation, bool isDeprecated, bool isNextRequired, bool isCurrentRequired, ImmutableHashSet<(string left, string right)> comparisonCache)
         {
             if (current == null)
                 return;
             if (current.Deprecated && next == null)
                 return;
-
             isDeprecated |= current.Deprecated;
 
             if (next == null)
@@ -136,24 +135,32 @@ namespace OpenApiCheck
 
             if (current.Type == "array")
             {
-                CompareRequestSchema($"{path}[]", next.Items, current.Items, operation, isDeprecated, false, false);
+                CompareRequestSchema($"{path}[]", next.Items, current.Items, operation, isDeprecated, false, false, comparisonCache);
                 return;
             }
+
+            if (comparisonCache.Contains((current.Reference?.Id, next.Reference?.Id)))
+                return;
+            comparisonCache = comparisonCache.Add((current.Reference?.Id, next.Reference?.Id));
 
             foreach (var (name, currentProp) in current.Properties)
             {
                 var nextProp = next.Properties.TryGetValue(name, out var n) ? n : null;
 
-                CompareRequestSchema($"{path}.{name}", nextProp, currentProp, operation, isDeprecated, next.Required.Contains(name), current.Required.Contains(name));
+                CompareRequestSchema($"{path}.{name}", nextProp, currentProp, operation, isDeprecated, next.Required.Contains(name), current.Required.Contains(name), comparisonCache);
             }
             foreach (var (name, nextProp) in next.Properties)
             {
                 if (!current.Properties.TryGetValue(name, out _))
-                    CompareRequestSchema($"{path}.{name}", nextProp, null, operation, isDeprecated, next.Required.Contains(name), current.Required.Contains(name));
+                    CompareRequestSchema($"{path}.{name}", nextProp, null, operation, isDeprecated, next.Required.Contains(name), current.Required.Contains(name), comparisonCache);
             }
+
+            CompareRequestSchema($"{path}{{}}", next.AdditionalProperties, current.AdditionalProperties, operation, isDeprecated, false, false, comparisonCache);
         }
 
-        private void CompareResponseSchema(string path, OpenApiSchema current, OpenApiSchema next, OperationComparison operation, bool isDeprecated)
+        private void CompareResponseSchema(string path, OpenApiSchema current, OpenApiSchema next,
+            OperationComparison operation, bool isDeprecated,
+            ImmutableHashSet<(string left, string right)> comparisonCache)
         {
             isDeprecated |= current.Deprecated;
             if (next == null)
@@ -176,15 +183,23 @@ namespace OpenApiCheck
 
             if (current.Type == "array")
             {
-                CompareResponseSchema($"{path}[]", current.Items, next.Items, operation, isDeprecated);
+                CompareResponseSchema($"{path}[]", current.Items, next.Items, operation, isDeprecated, comparisonCache);
                 return;
             }
+
+            if (comparisonCache.Contains((current.Reference?.Id, next.Reference?.Id)))
+                return;
+            comparisonCache = comparisonCache.Add((current.Reference?.Id, next.Reference?.Id));
+
             foreach (var (name, currentProp) in current.Properties)
             {
                 var nextProp = next.Properties.TryGetValue(name, out var n) ? n : null;
 
-                CompareResponseSchema($"{path}.{name}", currentProp, nextProp, operation, isDeprecated);
+                CompareResponseSchema($"{path}.{name}", currentProp, nextProp, operation, isDeprecated, comparisonCache);
             }
+
+            if (current.AdditionalProperties != null)
+                CompareResponseSchema($"{path}{{}}", current.AdditionalProperties, next.AdditionalProperties, operation, isDeprecated, comparisonCache);
         }
 
         private static void ReportPathIssue(OperationComparison operation, string path, bool isDeprecated, string message)
